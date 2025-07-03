@@ -1,38 +1,50 @@
 #include "AcrylicCompositor.h"
 
+// AcrylicCompositor 构造函数
 AcrylicCompositor::AcrylicCompositor(HWND hwnd)
 {
-	InitLibs();
-	CreateCompositionDevice();
-	CreateEffectGraph(dcompDevice3);
+	InitLibs();                         // 初始化库函数指针
+	CreateCompositionDevice();          // 创建组合设备
+	CreateEffectGraph(dcompDevice3);    // 创建效果图
 }
 
+// 设置亚克力效果的主要方法
 bool AcrylicCompositor::SetAcrylicEffect(HWND hwnd, BackdropSource source, AcrylicEffectParameter params)
 {
+	// 保存颜色参数
 	fallbackColor = params.fallbackColor;
 	tintColor = params.tintColor;
+	
+	// 如果使用主机背景源，需要从实时预览中排除窗口
 	if (source == BACKDROP_SOURCE_HOSTBACKDROP)
 	{
 		BOOL enable = TRUE;
 		WINDOWCOMPOSITIONATTRIBDATA CompositionAttribute{};
-		CompositionAttribute.Attrib = WCA_EXCLUDED_FROM_LIVEPREVIEW;
+		CompositionAttribute.Attrib = WCA_EXCLUDED_FROM_LIVEPREVIEW;  // 从实时预览中排除
 		CompositionAttribute.pvData = &enable;
 		CompositionAttribute.cbData = sizeof(BOOL);
 		DwmSetWindowCompositionAttribute(hwnd, &CompositionAttribute);
 	}
 
+	// 创建背景、视觉对象和回退视觉对象
 	CreateBackdrop(hwnd,source);
 	CreateCompositionVisual(hwnd);
 	CreateFallbackVisual();
+	
+	// 设置回退视觉对象的内容为交换链
 	fallbackVisual->SetContent(swapChain.Get());
+	
+	// 清除并重新构建视觉层次结构
 	rootVisual->RemoveAllVisuals();
 	switch (source)
 	{
 		case AcrylicCompositor::BACKDROP_SOURCE_DESKTOP:
+			// 桌面背景源：只添加桌面视觉和回退视觉
 			rootVisual->AddVisual(desktopWindowVisual.Get(), false, NULL);
 			rootVisual->AddVisual(fallbackVisual.Get(), true, desktopWindowVisual.Get());
 			break;
 		case AcrylicCompositor::BACKDROP_SOURCE_HOSTBACKDROP:
+			// 主机背景源：添加桌面视觉、顶级窗口视觉和回退视觉
 			rootVisual->AddVisual(desktopWindowVisual.Get(), false, NULL);
 			rootVisual->AddVisual(topLevelWindowVisual.Get(), true, desktopWindowVisual.Get());
 			rootVisual->AddVisual(fallbackVisual.Get(), true, topLevelWindowVisual.Get());
@@ -42,12 +54,14 @@ bool AcrylicCompositor::SetAcrylicEffect(HWND hwnd, BackdropSource source, Acryl
 			break;
 	}
 	
+	// 应用裁剪和变换
 	rootVisual->SetClip(clip.Get());
 	rootVisual->SetTransform(translateTransform.Get());
 
-	saturationEffect->SetSaturation(params.saturationAmount);
+	// 设置效果参数
+	saturationEffect->SetSaturation(params.saturationAmount);  // 设置饱和度
 
-	blurEffect->SetBorderMode(D2D1_BORDER_MODE_HARD);
+	blurEffect->SetBorderMode(D2D1_BORDER_MODE_HARD);         // 设置模糊边界模式
 	blurEffect->SetInput(0, saturationEffect.Get(), 0);
 	blurEffect->SetStandardDeviation(params.blurAmount);
 

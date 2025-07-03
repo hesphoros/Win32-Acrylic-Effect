@@ -92,14 +92,14 @@ compositor->SetAcrylicEffect(hwnd, AcrylicCompositor::BACKDROP_SOURCE_HOSTBACKDR
 // For Desktop Backdrop
 compositor->SetAcrylicEffect(hwnd, AcrylicCompositor::BACKDROP_SOURCE_DESKTOP , param);     
 ```
-  
+
 ## Features
   <ul>
     <li>Reduced flickering while resizing or dragging</li>
     <li>Multiple Backdrop Sources</li>
     <li>You can exclude a particular window from acrylic like the host window does for itself.</li>
   </ul>
-  
+
 ## Known Limitations
 <ul>
   <li>Sometimes the Desktop icons are missing in the acrylic effect.</li>

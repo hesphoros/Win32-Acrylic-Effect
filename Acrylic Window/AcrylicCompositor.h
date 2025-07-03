@@ -4,22 +4,25 @@
 #define UNICODE
 #endif 
 
+// Windows API 头文件
 #include <Windows.h>
-#include <dcomp.h>
-#include <d2d1_2.h>
-#include <dwmapi.h>
-#include <dxgi1_3.h>
-#include <d3d11_2.h>
+#include <dcomp.h>      // Direct Composition API
+#include <d2d1_2.h>     // Direct2D API
+#include <dwmapi.h>     // Desktop Window Manager API
+#include <dxgi1_3.h>    // DirectX Graphics Infrastructure API
+#include <d3d11_2.h>    // Direct3D 11 API
 #include <d2d1_2helper.h>
 #include <comutil.h>
 #include <wrl\implements.h>
 
-#define DWM_TNP_FREEZE            0x100000
-#define DWM_TNP_ENABLE3D          0x4000000
-#define DWM_TNP_DISABLE3D         0x8000000
-#define DWM_TNP_FORCECVI          0x40000000
-#define DWM_TNP_DISABLEFORCECVI   0x80000000
+// DWM 缩略图相关的未文档化标志
+#define DWM_TNP_FREEZE            0x100000     // 冻结缩略图
+#define DWM_TNP_ENABLE3D          0x4000000    // 启用3D效果
+#define DWM_TNP_DISABLE3D         0x8000000    // 禁用3D效果
+#define DWM_TNP_FORCECVI          0x40000000   // 强制CVI
+#define DWM_TNP_DISABLEFORCECVI   0x80000000   // 禁用强制CVI
 
+// 链接必要的库
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "d2d1")
@@ -28,28 +31,37 @@
 
 using namespace Microsoft::WRL;
 
+// 亚克力合成器类 - 用于创建和管理 Windows 亚克力效果
 class AcrylicCompositor
 {
 	public:
+		// 背景源枚举
 		enum BackdropSource
 		{
-			BACKDROP_SOURCE_DESKTOP = 0x0,
-			BACKDROP_SOURCE_HOSTBACKDROP = 0x1
+			BACKDROP_SOURCE_DESKTOP = 0x0,       // 桌面背景源
+			BACKDROP_SOURCE_HOSTBACKDROP = 0x1   // 主机背景源（包含其他窗口）
 		};
 
+		// 亚克力效果参数结构
 		struct AcrylicEffectParameter
 		{
-			float blurAmount;
-			float saturationAmount;
-			D2D1_COLOR_F tintColor;
-			D2D1_COLOR_F fallbackColor;
+			float blurAmount;           // 模糊强度
+			float saturationAmount;     // 饱和度
+			D2D1_COLOR_F tintColor;     // 着色颜色
+			D2D1_COLOR_F fallbackColor; // 回退颜色
 		};
 
+		// 构造函数
 		AcrylicCompositor(HWND hwnd);
+		
+		// 同步方法 - 处理窗口消息和状态更新
 		bool Sync(HWND hwnd,int msg,WPARAM wParam,LPARAM lParam,bool active);
+		
+		// 设置亚克力效果
 		bool SetAcrylicEffect(HWND hwnd,BackdropSource source,AcrylicEffectParameter params);
 
 	private:
+		// 窗口组合属性枚举 - 用于设置窗口的组合行为
 		enum WINDOWCOMPOSITIONATTRIB
 		{
 			WCA_UNDEFINED = 0x0,
@@ -80,71 +92,76 @@ class AcrylicCompositor
 			WCA_PASSIVEUPDATEMODE = 0x19,
 			WCA_LAST = 0x1A,
 		};
-
+		// 窗口组合属性数据结构
 		struct WINDOWCOMPOSITIONATTRIBDATA
 		{
-			WINDOWCOMPOSITIONATTRIB Attrib;
-			void* pvData;
-			DWORD cbData;
+			WINDOWCOMPOSITIONATTRIB Attrib;  // 属性类型
+			void* pvData;                    // 数据指针
+			DWORD cbData;                    // 数据大小
 		};
 
-		ComPtr<ID2D1Device1> d2Device;
-		ComPtr<ID3D11Device> d3d11Device;
-		ComPtr<IDXGIDevice2> dxgiDevice;
-		ComPtr<IDXGIFactory2> dxgiFactory;
-		ComPtr<ID2D1Factory2> d2dFactory2;
-		ComPtr<ID2D1DeviceContext> deviceContext;
-		ComPtr<IDCompositionDesktopDevice> dcompDevice;
-		ComPtr<IDCompositionDevice3> dcompDevice3;
-		ComPtr<IDCompositionTarget> dcompTarget;
+		// Direct2D 和 Direct3D 相关接口指针
+		ComPtr<ID2D1Device1> d2Device;              // Direct2D 设备
+		ComPtr<ID3D11Device> d3d11Device;           // Direct3D 11 设备
+		ComPtr<IDXGIDevice2> dxgiDevice;            // DXGI 设备
+		ComPtr<IDXGIFactory2> dxgiFactory;          // DXGI 工厂
+		ComPtr<ID2D1Factory2> d2dFactory2;          // Direct2D 工厂
+		ComPtr<ID2D1DeviceContext> deviceContext;   // Direct2D 设备上下文
 
-		ComPtr<IDCompositionVisual2> rootVisual;
-		ComPtr<IDCompositionVisual2> fallbackVisual;
-		ComPtr<IDCompositionVisual2> desktopWindowVisual;
-		ComPtr<IDCompositionVisual2> topLevelWindowVisual;
+		// Direct Composition 相关接口指针
+		ComPtr<IDCompositionDesktopDevice> dcompDevice;  // Direct Composition 桌面设备
+		ComPtr<IDCompositionDevice3> dcompDevice3;       // Direct Composition 设备 v3
+		ComPtr<IDCompositionTarget> dcompTarget;         // Direct Composition 目标
 
-		#pragma region Acrylic Essentials
+		// 视觉对象指针
+		ComPtr<IDCompositionVisual2> rootVisual;         // 根视觉对象
+		ComPtr<IDCompositionVisual2> fallbackVisual;     // 回退视觉对象
+		ComPtr<IDCompositionVisual2> desktopWindowVisual; // 桌面窗口视觉对象
+		ComPtr<IDCompositionVisual2> topLevelWindowVisual; // 顶级窗口视觉对象
 
-		ComPtr<IDCompositionGaussianBlurEffect> blurEffect;
-		ComPtr<IDCompositionSaturationEffect> saturationEffect;
-		ComPtr<IDCompositionTranslateTransform> translateTransform;
-		ComPtr<IDCompositionRectangleClip> clip;
+		#pragma region Acrylic Essentials - 亚克力效果核心组件
+
+		ComPtr<IDCompositionGaussianBlurEffect> blurEffect;      // 高斯模糊效果
+		ComPtr<IDCompositionSaturationEffect> saturationEffect;  // 饱和度效果
+		ComPtr<IDCompositionTranslateTransform> translateTransform; // 平移变换
+		ComPtr<IDCompositionRectangleClip> clip;                 // 矩形裁剪
+
+		#pragma endregion
+		// Fallback Visual - 回退视觉对象相关组件
+		#pragma region  
+
+		DXGI_SWAP_CHAIN_DESC1 description = {};     // 交换链描述
+		D2D1_BITMAP_PROPERTIES1 properties = {};    // 位图属性
+		ComPtr<IDXGISwapChain1> swapChain;           // 交换链
+		ComPtr<IDXGISurface2> fallbackSurface;       // 回退表面
+		ComPtr<ID2D1Bitmap1> fallbackBitmap;         // 回退位图
+		ComPtr<ID2D1SolidColorBrush> fallbackBrush;  // 回退纯色画刷
+		D2D1_COLOR_F tintColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, .70f);     // 着色颜色
+		D2D1_COLOR_F fallbackColor = D2D1::ColorF(1.0f,1.0f,1.0f,1.0f);    // 回退颜色
+		D2D1_RECT_F fallbackRect = D2D1::RectF(0, 0, (float)GetSystemMetrics(SM_CXSCREEN), (float)GetSystemMetrics(SM_CYSCREEN)); // 回退矩形
 
 		#pragma endregion
 
-		#pragma region Fallback Visual
+		#pragma region Desktop Backdrop - 桌面背景相关
 
-		DXGI_SWAP_CHAIN_DESC1 description = {};
-		D2D1_BITMAP_PROPERTIES1 properties = {};
-		ComPtr<IDXGISwapChain1> swapChain;
-		ComPtr<IDXGISurface2> fallbackSurface;
-		ComPtr<ID2D1Bitmap1> fallbackBitmap;
-		ComPtr<ID2D1SolidColorBrush> fallbackBrush;
-		D2D1_COLOR_F tintColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, .70f);
-		D2D1_COLOR_F fallbackColor = D2D1::ColorF(1.0f,1.0f,1.0f,1.0f);
-		D2D1_RECT_F fallbackRect = D2D1::RectF(0, 0, (float)GetSystemMetrics(SM_CXSCREEN), (float)GetSystemMetrics(SM_CYSCREEN));
+		HWND desktopWindow;                    // 桌面窗口句柄
+		RECT desktopWindowRect;               // 桌面窗口矩形
+		SIZE thumbnailSize{};                 // 缩略图大小
+		DWM_THUMBNAIL_PROPERTIES thumbnail;   // DWM 缩略图属性
+		HTHUMBNAIL desktopThumbnail = NULL;   // 桌面缩略图句柄
 
 		#pragma endregion
 
-		#pragma region Desktop Backdrop
+		#pragma region Top Level Window Backdrop - 顶级窗口背景相关
 
-		HWND desktopWindow;
-		RECT desktopWindowRect;
-		SIZE thumbnailSize{};
-		DWM_THUMBNAIL_PROPERTIES thumbnail;
-		HTHUMBNAIL desktopThumbnail = NULL;
-
-		#pragma endregion
-
-		#pragma region Top Level Window Backdrop
-
-		RECT sourceRect{0,0,GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN)};
-		SIZE destinationSize{ GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN) };
-		HTHUMBNAIL topLevelWindowThumbnail = NULL;
-		HWND* hwndExclusionList;
+		RECT sourceRect{0,0,GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN)}; // 源矩形
+		SIZE destinationSize{ GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN) }; // 目标大小
+		HTHUMBNAIL topLevelWindowThumbnail = NULL;  // 顶级窗口缩略图句柄
+		HWND* hwndExclusionList;                    // 排除窗口列表
 
 		#pragma endregion
 
+		// 函数指针类型定义 - 用于调用未文档化的 Windows API
 		typedef NTSTATUS(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
 		typedef BOOL(WINAPI* SetWindowCompositionAttribute)(IN HWND hwnd,IN WINDOWCOMPOSITIONATTRIBDATA* pwcad);
 		typedef HRESULT(WINAPI* DwmpCreateSharedThumbnailVisual)(IN HWND hwndDestination,IN HWND hwndSource,IN DWORD dwThumbnailFlags,IN DWM_THUMBNAIL_PROPERTIES* pThumbnailProperties,IN VOID* pDCompDevice,OUT VOID** ppVisual,OUT PHTHUMBNAIL phThumbnailId);
@@ -153,6 +170,7 @@ class AcrylicCompositor
 		typedef HRESULT(WINAPI* DwmpCreateSharedVirtualDesktopVisual)(IN HWND hwndDestination,IN VOID* pDCompDevice,OUT VOID** ppVisual,OUT PHTHUMBNAIL phThumbnailId);
 		typedef HRESULT(WINAPI* DwmpUpdateSharedVirtualDesktopVisual)(IN HTHUMBNAIL hThumbnailId,IN HWND* phwndsInclude,IN DWORD chwndsInclude,IN HWND* phwndsExclude,IN DWORD chwndsExclude,OUT RECT* prcSource,OUT SIZE* pDestinationSize);
 
+		// 函数指针实例
 		DwmpCreateSharedThumbnailVisual DwmCreateSharedThumbnailVisual;
 		DwmpCreateSharedMultiWindowVisual DwmCreateSharedMultiWindowVisual;
 		DwmpUpdateSharedMultiWindowVisual DwmUpdateSharedMultiWindowVisual;
@@ -161,21 +179,21 @@ class AcrylicCompositor
 		SetWindowCompositionAttribute DwmSetWindowCompositionAttribute;
 		RtlGetVersionPtr GetVersionInfo;
 
+		HRESULT hr;                    // HRESULT 错误码
+		RECT hostWindowRect{};         // 主机窗口矩形
 
-		HRESULT hr;
-		RECT hostWindowRect{};
-
-		bool InitLibs();
-		long GetBuildVersion();
-		bool CreateCompositionDevice();
-		bool CreateFallbackVisual();
-		void SyncFallbackVisual(bool active);
-		bool CreateCompositionVisual(HWND hwnd);
-		bool CreateCompositionTarget(HWND hwnd);
-		bool CreateBackdrop(HWND hwnd,BackdropSource source);
-		bool CreateEffectGraph(ComPtr<IDCompositionDevice3> dcompDevice3);
-		void SyncCoordinates(HWND hwnd);
-		bool Flush();
-		bool Commit();
+		// 私有方法声明
+		bool InitLibs();                                          // 初始化库
+		long GetBuildVersion();                                   // 获取构建版本
+		bool CreateCompositionDevice();                           // 创建组合设备
+		bool CreateFallbackVisual();                             // 创建回退视觉对象
+		void SyncFallbackVisual(bool active);                    // 同步回退视觉对象
+		bool CreateCompositionVisual(HWND hwnd);                 // 创建组合视觉对象
+		bool CreateCompositionTarget(HWND hwnd);                 // 创建组合目标
+		bool CreateBackdrop(HWND hwnd,BackdropSource source);    // 创建背景
+		bool CreateEffectGraph(ComPtr<IDCompositionDevice3> dcompDevice3); // 创建效果图
+		void SyncCoordinates(HWND hwnd);                         // 同步坐标
+		bool Flush();                                            // 刷新
+		bool Commit();                                           // 提交
 };
 
