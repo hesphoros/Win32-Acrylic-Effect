@@ -212,3 +212,147 @@ struct AcrylicEffectParameter {
 - [Direct2D 文档](https://docs.microsoft.com/en-us/windows/win32/direct2d/direct2d-portal)
 - [DWM 文档](https://docs.microsoft.com/en-us/windows/win32/dwm/dwm-overview)
 - [DXGI 文档](https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/dx-graphics-dxgi)
+
+## Qt 集成 API
+
+为了方便在 Qt 应用程序中使用亚克力效果，本项目提供了 `QAcrylicWidget` 类。
+
+### QAcrylicWidget 类
+
+`QAcrylicWidget` 是 `QWidget` 的子类，封装了 Win32 亚克力效果的复杂性。
+
+#### 主要方法
+
+##### 效果控制
+```cpp
+// 启用亚克力效果
+bool enableAcrylicEffect(const AcrylicParams &params = AcrylicParams());
+
+// 禁用亚克力效果
+void disableAcrylicEffect();
+
+// 检查是否已启用
+bool isAcrylicEnabled() const;
+
+// 更新效果参数
+void updateAcrylicParams(const AcrylicParams &params);
+
+// 获取当前参数
+AcrylicParams getAcrylicParams() const;
+
+// 检查系统支持（静态方法）
+static bool isAcrylicSupported();
+```
+
+##### 参数结构
+```cpp
+struct AcrylicParams
+{
+    float blurAmount = 40.0f;           // 模糊强度 (20-60)
+    float saturationAmount = 2.0f;      // 饱和度 (1.5-2.5)
+    QColor tintColor = QColor(0, 0, 0, 76);    // 着色颜色
+    QColor fallbackColor = QColor(25, 25, 25); // 回退颜色
+    bool enableHostBackdrop = true;    // 启用主机背景
+};
+```
+
+#### Qt 特有的集成特性
+
+##### 事件处理
+- **自动窗口同步**: 自动处理窗口移动、调整大小和状态变化
+- **消息传递**: 将 Windows 消息转发给底层合成器
+- **性能优化**: 使用定时器避免频繁更新
+
+##### 跨平台兼容性
+- **条件编译**: 在非 Windows 平台上提供空实现
+- **优雅降级**: 当效果不可用时自动使用回退颜色
+- **错误处理**: 完善的错误检查和异常处理
+
+##### 使用示例
+```cpp
+// 基本使用
+QAcrylicWidget *widget = new QAcrylicWidget();
+QAcrylicWidget::AcrylicParams params;
+params.blurAmount = 30.0f;
+params.tintColor = QColor(255, 255, 255, 51); // 半透明白色
+widget->enableAcrylicEffect(params);
+widget->show();
+
+// 继承使用
+class MyWindow : public QAcrylicWidget
+{
+public:
+    MyWindow() {
+        enableAcrylicEffect(); // 使用默认参数
+        setupUI();
+    }
+};
+```
+
+### Qt 特定的 Windows API 使用
+
+#### 窗口句柄获取
+```cpp
+// 通过 QWindow 获取 HWND
+QWindow *window = widget->windowHandle();
+HWND hwnd = reinterpret_cast<HWND>(window->winId());
+```
+
+#### 本地事件处理
+```cpp
+// 重写 nativeEvent 处理 Windows 消息
+bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override
+{
+    if (eventType == "windows_generic_MSG")
+    {
+        MSG *msg = static_cast<MSG*>(message);
+        // 处理特定消息
+        if (msg->message == WM_DWMCOMPOSITIONCHANGED)
+        {
+            // DWM 状态变化处理
+        }
+    }
+    return QWidget::nativeEvent(eventType, message, result);
+}
+```
+
+#### 颜色转换
+```cpp
+// Qt 颜色到 Direct2D 颜色的转换
+D2D1_COLOR_F qtColorToD2D1(const QColor &color)
+{
+    return D2D1::ColorF(
+        color.redF(),
+        color.greenF(), 
+        color.blueF(),
+        color.alphaF()
+    );
+}
+```
+
+### 构建配置
+
+#### CMake 配置
+```cmake
+# 查找 Qt6
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui)
+
+# Windows 特定链接
+if(WIN32)
+    target_link_libraries(target
+        Qt6::Core Qt6::Widgets Qt6::Gui
+        dwmapi d3d11 d2d1 dcomp dxgi
+    )
+endif()
+```
+
+#### qmake 配置
+```pro
+QT += core widgets gui
+CONFIG += c++17
+
+win32 {
+    LIBS += -ldwmapi -ld3d11 -ld2d1 -ldcomp -ldxgi
+    DEFINES += UNICODE _UNICODE
+}
+```

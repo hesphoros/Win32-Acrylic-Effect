@@ -44,6 +44,61 @@
 
 ![示例](https://user-images.githubusercontent.com/72641365/121798817-2d04d300-cc46-11eb-845b-0f2863d7cfde.png)
 
+## 项目结构
+
+```
+Win32-Acrylic-Effect/
+├── Acrylic Window/             # 原生 Win32 亚克力效果实现
+│   ├── AcrylicCompositor.h/cpp # 核心亚克力效果组件
+│   └── Acrylic Window.h/cpp    # Win32 演示程序
+├── QtIntegration/              # Qt 集成版本
+│   ├── QAcrylicWidget.h/cpp    # Qt 亚克力 Widget 封装
+│   ├── AcrylicDemo.cpp         # Qt 演示应用程序
+│   ├── build_qt.bat            # Qt 编译脚本
+│   └── bin/                    # 编译输出
+├── docs/                       # 中文文档
+│   ├── README_CN.md            # 项目说明
+│   ├── API_SUMMARY_CN.md       # API 文档
+│   ├── QT_USAGE_GUIDE_CN.md    # Qt 使用指南
+│   └── COMPILE_GUIDE_CN.md     # 编译指南
+└── demo.bat                    # 演示启动脚本
+```
+
+## 快速开始
+
+### 编译和运行
+
+```bash
+# 编译原生 Win32 程序
+build.bat
+
+# 编译 Qt 集成版本
+cd QtIntegration
+build_qt.bat
+
+# 运行演示程序
+cd ..
+demo.bat
+```
+
+### Qt 集成使用
+
+```cpp
+#include "QtIntegration/QAcrylicWidget.h"
+
+// 创建亚克力窗口
+QAcrylicWidget* widget = new QAcrylicWidget(this);
+
+// 配置参数
+QAcrylicWidget::AcrylicParams params;
+params.blurAmount = 20.0f;
+params.saturation = 1.2f;
+params.tintColor = QColor(0, 120, 215, 80);
+
+// 启用效果
+widget->enableAcrylicEffect(params);
+```
+
 ### 简史
 Windows 10 的亚克力效果最初在 2017 年 Windows Fall Creators Update 之后引入到 UWP 应用程序中。从那时起，开发者们一直在尝试在普通 Windows 应用程序（如 WPF、Win32 等）上实现亚克力效果。最常用的方法是 `SetWindowCompositionAttribute()`，但它的有效期并不长，从 Windows 10 1903 开始，窗口在拖拽时会变得卡顿 *（这个问题似乎在 Windows Insider 预览版中得到了修复，但在任何稳定版本的 Windows 中都没有修复）*。
 

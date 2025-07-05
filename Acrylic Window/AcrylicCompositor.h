@@ -14,6 +14,8 @@
 #include <d2d1_2helper.h>
 #include <comutil.h>
 #include <wrl\implements.h>
+#include <winternl.h>   // 用于 RTL_OSVERSIONINFOW 和 NTSTATUS
+#include <stdexcept>    // 用于异常处理
 
 // DWM 缩略图相关的未文档化标志
 #define DWM_TNP_FREEZE            0x100000     // 冻结缩略图
@@ -161,14 +163,18 @@ class AcrylicCompositor
 
 		#pragma endregion
 
+		// 前向声明和类型定义
+		typedef PVOID PRTL_OSVERSIONINFOW;
+		typedef LONG NTSTATUS;
+
 		// 函数指针类型定义 - 用于调用未文档化的 Windows API
-		typedef NTSTATUS(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
-		typedef BOOL(WINAPI* SetWindowCompositionAttribute)(IN HWND hwnd,IN WINDOWCOMPOSITIONATTRIBDATA* pwcad);
-		typedef HRESULT(WINAPI* DwmpCreateSharedThumbnailVisual)(IN HWND hwndDestination,IN HWND hwndSource,IN DWORD dwThumbnailFlags,IN DWM_THUMBNAIL_PROPERTIES* pThumbnailProperties,IN VOID* pDCompDevice,OUT VOID** ppVisual,OUT PHTHUMBNAIL phThumbnailId);
-		typedef HRESULT(WINAPI* DwmpCreateSharedMultiWindowVisual)(IN HWND hwndDestination,IN VOID* pDCompDevice,OUT VOID** ppVisual,OUT PHTHUMBNAIL phThumbnailId);
-		typedef HRESULT(WINAPI* DwmpUpdateSharedMultiWindowVisual)(IN HTHUMBNAIL hThumbnailId,IN HWND* phwndsInclude,IN DWORD chwndsInclude,IN HWND* phwndsExclude,IN DWORD chwndsExclude,OUT RECT* prcSource,OUT SIZE* pDestinationSize,IN DWORD dwFlags);
-		typedef HRESULT(WINAPI* DwmpCreateSharedVirtualDesktopVisual)(IN HWND hwndDestination,IN VOID* pDCompDevice,OUT VOID** ppVisual,OUT PHTHUMBNAIL phThumbnailId);
-		typedef HRESULT(WINAPI* DwmpUpdateSharedVirtualDesktopVisual)(IN HTHUMBNAIL hThumbnailId,IN HWND* phwndsInclude,IN DWORD chwndsInclude,IN HWND* phwndsExclude,IN DWORD chwndsExclude,OUT RECT* prcSource,OUT SIZE* pDestinationSize);
+		typedef NTSTATUS (WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+		typedef BOOL (WINAPI* SetWindowCompositionAttribute)(HWND hwnd, WINDOWCOMPOSITIONATTRIBDATA* pwcad);
+		typedef HRESULT (WINAPI* DwmpCreateSharedThumbnailVisual)(HWND hwndDestination, HWND hwndSource, DWORD dwThumbnailFlags, DWM_THUMBNAIL_PROPERTIES* pThumbnailProperties, VOID* pDCompDevice, VOID** ppVisual, PHTHUMBNAIL phThumbnailId);
+		typedef HRESULT (WINAPI* DwmpCreateSharedMultiWindowVisual)(HWND hwndDestination, VOID* pDCompDevice, VOID** ppVisual, PHTHUMBNAIL phThumbnailId);
+		typedef HRESULT (WINAPI* DwmpUpdateSharedMultiWindowVisual)(HTHUMBNAIL hThumbnailId, HWND* phwndsInclude, DWORD chwndsInclude, HWND* phwndsExclude, DWORD chwndsExclude, RECT* prcSource, SIZE* pDestinationSize, DWORD dwFlags);
+		typedef HRESULT (WINAPI* DwmpCreateSharedVirtualDesktopVisual)(HWND hwndDestination, VOID* pDCompDevice, VOID** ppVisual, PHTHUMBNAIL phThumbnailId);
+		typedef HRESULT (WINAPI* DwmpUpdateSharedVirtualDesktopVisual)(HTHUMBNAIL hThumbnailId, HWND* phwndsInclude, DWORD chwndsInclude, HWND* phwndsExclude, DWORD chwndsExclude, RECT* prcSource, SIZE* pDestinationSize);
 
 		// 函数指针实例
 		DwmpCreateSharedThumbnailVisual DwmCreateSharedThumbnailVisual;

@@ -3,9 +3,20 @@
 // AcrylicCompositor 构造函数
 AcrylicCompositor::AcrylicCompositor(HWND hwnd)
 {
-	InitLibs();                         // 初始化库函数指针
-	CreateCompositionDevice();          // 创建组合设备
-	CreateEffectGraph(dcompDevice3);    // 创建效果图
+	if (!InitLibs())                    // 初始化库函数指针
+	{
+		throw std::runtime_error("Failed to initialize libraries");
+	}
+	
+	if (!CreateCompositionDevice())     // 创建组合设备
+	{
+		throw std::runtime_error("Failed to create composition device");
+	}
+	
+	if (!CreateEffectGraph(dcompDevice3))  // 创建效果图
+	{
+		throw std::runtime_error("Failed to create effect graph");
+	}
 }
 
 // 设置亚克力效果的主要方法
